@@ -183,4 +183,16 @@
     <string name="permission_battery">Unrestricted battery usage</string>
     <string name="permission_battery_desc">Improves reliability on phones with aggressive battery management</string>
     <string name="back">Back</string>
+    <string name="permission_check">Check</string>
+    <string name="permission_pinning">Screen pinning</string>
+    <string name="permission_pinning_desc">Keeps the notification panel and navigation buttons closed during sleep</string>
+    <string name="permission_vendor_popup">Background pop-up windows</string>
+    <string name="permission_vendor_popup_desc">Required on Xiaomi — without it the sleep screen never appears</string>
+    <string name="permission_vendor_autostart">Autostart</string>
+    <string name="permission_vendor_autostart_desc">Lets the schedule keep running after the phone restarts</string>
+    <string name="open_settings">Open settings</string>
+    <string name="vendor_popup_prompt_title">One more step on this phone</string>
+    <string name="vendor_popup_prompt_message">Your phone also needs “Display pop-up windows while running in background”. Without it the sleep screen will not appear, even though everything else works. Find Roozara in the list and turn it on.</string>
+    <string name="pinning_prompt_title">Keep the sleep screen in place</string>
+    <string name="pinning_prompt_message">Turn on “Screen pinning” so the notification panel and the navigation buttons stay closed during sleep. You can still leave by holding Back and Recents together.</string>
 </resources>

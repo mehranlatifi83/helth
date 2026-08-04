@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.InputType;
 import android.graphics.Rect;
 import android.view.Gravity;
@@ -39,6 +40,7 @@ import ir.mehranlatifi83.roozara.manager.ScheduleManager;
 import ir.mehranlatifi83.roozara.service.SleepVpnService;
 import ir.mehranlatifi83.roozara.service.WakeAlarmService;
 import ir.mehranlatifi83.roozara.util.JalaliCalendar;
+import ir.mehranlatifi83.roozara.util.ScreenPinning;
 
 import java.util.Calendar;
 import java.util.Locale;
@@ -85,6 +87,7 @@ public class SleepLockActivity extends AppCompatActivity {
     private String  memorySequence;
     private int     wrongCount          = 0;
     private boolean exitCalled          = false;
+    private boolean pinningApplied      = false;
     private boolean wakeChallengeActive = false;
     private boolean earlyExitButtonShown = false;
 
@@ -176,6 +179,14 @@ public class SleepLockActivity extends AppCompatActivity {
         handler.removeCallbacks(relaunchIfNeeded);
         handler.post(clockTick);
         hideSystemBars();
+        // Re-applied on every resume: the system drops lock task mode whenever the
+        // activity leaves the foreground, so pinning once in onCreate would not survive
+        // the screen being turned off and on again.
+        applyScreenPinning();
+        // Self-heal the internet block. If the tunnel was torn down by a process kill or
+        // by another VPN app taking the slot, it comes back rather than leaving the user
+        // quietly online until morning.
+        if (!exitCalled) SleepVpnService.ensureRunning(this);
         if (wakeChallengeActive) {
             keepScreenOn();
         } else {
@@ -249,9 +260,35 @@ public class SleepLockActivity extends AppCompatActivity {
     private void hideSystemBars() {
         WindowInsetsControllerCompat ctrl =
                 WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
-        ctrl.setSystemBarsBehavior(
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        // BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE let a swipe bring the navigation buttons
+        // and the notification shade straight back, which is how people were leaving the
+        // lock screen. The default behaviour keeps them hidden; lock task mode below is
+        // what actually stops the shade from being pulled down at all.
+        ctrl.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_DEFAULT);
         ctrl.hide(WindowInsetsCompat.Type.systemBars());
+    }
+
+    /**
+     * Pin the screen for the duration of the sleep window.
+     *
+     * Only attempted when overlay access is granted: that is the mode where the lock
+     * screen is meant to own the display. Without it the app is running in the
+     * notification-fallback mode, where pinning would be both surprising and unhelpful.
+     */
+    private void applyScreenPinning() {
+        if (exitCalled || pinningApplied) return;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || !Settings.canDrawOverlays(this)) {
+            return;
+        }
+        pinningApplied = ScreenPinning.start(this);
+    }
+
+    private void releaseScreenPinning() {
+        // Must happen before finishing, otherwise the task stays pinned and the user is
+        // stuck on whatever the launcher shows next.
+        ScreenPinning.stop(this);
+        pinningApplied = false;
     }
 
     private void blockBackButton() {
@@ -674,6 +711,7 @@ public class SleepLockActivity extends AppCompatActivity {
 
     private void exitSleepMode() {
         exitCalled = true;
+        releaseScreenPinning();
         // Only stop WakeAlarmService if the alarm is actually active (wake time reached).
         // Calling stop() before wake time starts the service just to dismiss it, causing
         // a brief notification flash.

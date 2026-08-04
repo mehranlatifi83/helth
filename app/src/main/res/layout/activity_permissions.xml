@@ -20,16 +20,15 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <ImageButton
                 android:id="@+id/button_back"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/back"
-                android:gravity="center"
-                android:text="‹"
-                android:textColor="@color/colorOnSurface"
-                android:textSize="36sp" />
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_arrow_back" />
 
             <TextView
                 android:layout_width="0dp"
@@ -73,8 +72,13 @@
                 <include layout="@layout/row_permission" android:id="@+id/row_vpn" />
                 <include layout="@layout/row_permission" android:id="@+id/row_dnd" />
                 <include layout="@layout/row_permission" android:id="@+id/row_overlay" />
+                <include layout="@layout/row_permission" android:id="@+id/row_pinning" />
                 <include layout="@layout/row_permission" android:id="@+id/row_fullscreen" />
                 <include layout="@layout/row_permission" android:id="@+id/row_battery" />
+
+                <!-- Only shown on ROMs that need extra vendor permissions, e.g. MIUI. -->
+                <include layout="@layout/row_permission" android:id="@+id/row_vendor_popup" />
+                <include layout="@layout/row_permission" android:id="@+id/row_vendor_autostart" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>

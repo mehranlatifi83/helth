@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
@@ -43,12 +42,41 @@ public class SleepVpnService extends VpnService {
         // it. The old descriptor is dead by then, so always rebuild rather than trusting
         // the cached one.
         if (!establishVpnTunnel()) {
-            Toast.makeText(this, R.string.vpn_start_failed, Toast.LENGTH_LONG).show();
+            // A Toast is unreliable here: this runs from a background-started service,
+            // and a user who is asleep or blind would not see it anyway. A notification
+            // persists until it is read.
+            notifyBlockingFailed();
             stopSelf();
             return START_NOT_STICKY;
         }
         startDraining();
         return START_STICKY;
+    }
+
+    /**
+     * Starts the tunnel if it is not already up. Called whenever the lock screen comes
+     * back to the foreground, so a tunnel lost to a process kill or to another VPN app
+     * is rebuilt instead of silently leaving the user online for the rest of the night.
+     */
+    public static void ensureRunning(android.content.Context ctx) {
+        if (VpnService.prepare(ctx) != null) return;  // No consent; nothing we can do.
+        if (vpnInterface != null) return;
+        try {
+            ctx.startForegroundService(new Intent(ctx, SleepVpnService.class));
+        } catch (Exception e) {
+            Log.w(TAG, "Could not restart the blocking tunnel", e);
+        }
+    }
+
+    private void notifyBlockingFailed() {
+        getSystemService(NotificationManager.class).notify(7,
+                new NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setContentTitle(getString(R.string.vpn_permission_missing_title))
+                        .setContentText(getString(R.string.vpn_start_failed))
+                        .setSmallIcon(R.drawable.ic_moon)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setAutoCancel(true)
+                        .build());
     }
 
     @Override

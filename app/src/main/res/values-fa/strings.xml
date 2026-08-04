@@ -183,4 +183,16 @@
     <string name="permission_battery">مصرف باتری بدون محدودیت</string>
     <string name="permission_battery_desc">افزایش پایداری در گوشی‌هایی با مدیریت باتری سخت‌گیرانه</string>
     <string name="back">بازگشت</string>
+    <string name="permission_check">بررسی کنید</string>
+    <string name="permission_pinning">پین کردن صفحه</string>
+    <string name="permission_pinning_desc">پنل اعلان‌ها و دکمه‌های ناوبری را در زمان خواب بسته نگه می‌دارد</string>
+    <string name="permission_vendor_popup">پنجره‌های بازشو در پس‌زمینه</string>
+    <string name="permission_vendor_popup_desc">روی شیائومی لازم است — بدون آن صفحهٔ خواب اصلاً نمایش داده نمی‌شود</string>
+    <string name="permission_vendor_autostart">اجرای خودکار</string>
+    <string name="permission_vendor_autostart_desc">اجازه می‌دهد برنامه بعد از روشن شدن دوبارهٔ گوشی به کار ادامه دهد</string>
+    <string name="open_settings">باز کردن تنظیمات</string>
+    <string name="vendor_popup_prompt_title">روی این گوشی یک قدم دیگر لازم است</string>
+    <string name="vendor_popup_prompt_message">گوشی شما به «نمایش پنجره‌های بازشو در پس‌زمینه» هم نیاز دارد. بدون آن، صفحهٔ خواب نمایش داده نمی‌شود، حتی اگر بقیهٔ بخش‌ها درست کار کنند. روزآرا را در فهرست پیدا کنید و آن را روشن کنید.</string>
+    <string name="pinning_prompt_title">صفحهٔ خواب را سر جایش نگه دارید</string>
+    <string name="pinning_prompt_message">«پین کردن صفحه» را روشن کنید تا پنل اعلان‌ها و دکمه‌های ناوبری در زمان خواب بسته بمانند. همچنان می‌توانید با نگه داشتن هم‌زمان بازگشت و برنامه‌های اخیر خارج شوید.</string>
 </resources>
