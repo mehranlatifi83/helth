@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon layer. The system tints this flat, so the silhouette alone has to carry
+  the mark — which is a reason the sunrise beats the old design, whose meaning depended
+  on the tick being a different colour from the arc behind it.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -7,25 +12,17 @@
 
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M54,25 a13,13 0,1 0,0 26 a13,13 0,1 0,0 -26" />
-
-    <path
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="3"
-        android:strokeLineCap="round"
-        android:pathData="M54,18 L54,21 M36,25 L39,28 M72,25 L69,28 M29,40 L33,40 M79,40 L75,40" />
+        android:pathData="M37.48,71 A17,17 0 1 1 70.52,71 Z" />
 
     <path
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="4"
         android:strokeLineCap="round"
-        android:pathData="M29,63 C39,51 69,51 79,63" />
+        android:pathData="M54,38 L54,46 M33.5,45 L39,50.5 M74.5,45 L69,50.5 M24,60 L32,61.5 M84,60 L76,61.5" />
 
     <path
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="7"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M31,70 C40,65 46,72 53,81 C61,70 68,62 79,56" />
+        android:pathData="M17.75,72.75 L90.25,72.75" />
 </vector>
-

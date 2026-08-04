@@ -1,26 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon foreground: a sun rising over a horizon — "everything for a better day".
+
+  One idea, two colours. The previous mark stacked a sun, an arc and a tick, which left
+  no focal point and turned to noise below about 48px.
+
+  The sun and rays stay inside the 18–90 safe zone so no launcher mask can clip them.
+  The horizon is inset to 17.75–90.25, which clears the circular mask while still
+  reading as a horizon rather than a floating underline.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Roozara: a new day and a clear path moving forward. -->
-    <path
-        android:fillColor="#FBBF24"
-        android:pathData="M54,25 a13,13 0,1 0,0 26 a13,13 0,1 0,0 -26" />
+    <!-- Sun, cut off by the horizon. -->
+    <path android:pathData="M37.48,71 A17,17 0 1 1 70.52,71 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="50"
+                android:endX="54"
+                android:endY="71"
+                android:type="linear">
+                <item android:offset="0" android:color="#FCD34D" />
+                <item android:offset="1" android:color="#F59E0B" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
+    <!-- Rays. -->
     <path
-        android:strokeColor="#FDE68A"
-        android:strokeWidth="3"
+        android:strokeColor="#FCD34D"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
-        android:pathData="M54,18 L54,21 M36,25 L39,28 M72,25 L69,28 M29,40 L33,40 M79,40 L75,40" />
+        android:pathData="M54,38 L54,46 M33.5,45 L39,50.5 M74.5,45 L69,50.5 M24,60 L32,61.5 M84,60 L76,61.5" />
 
+    <!-- Horizon. -->
     <path
-        android:strokeColor="#4ADE80"
-        android:strokeWidth="6"
+        android:strokeColor="#818CF8"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M30,78 C42,78 47,70 55,68 C64,66 69,57 78,49 M69,50 L78,49 L76,58" />
+        android:pathData="M17.75,72.75 L90.25,72.75" />
 </vector>
-
