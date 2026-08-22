@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configuration for the sleep guard.
+
+  Deliberately narrow. It listens for one event type — which window came to the front —
+  and asks for no content retrieval, no gesture handling and no key filtering. That is
+  everything it needs to bring the lock screen back, and nothing more.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canPerformGestures="false"
+    android:canRequestFilterKeyEvents="false"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/guard_service_description"
+    android:notificationTimeout="100"
+    android:summary="@string/guard_service_summary" />

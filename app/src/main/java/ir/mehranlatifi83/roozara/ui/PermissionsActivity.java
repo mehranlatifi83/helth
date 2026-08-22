@@ -23,6 +23,7 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import ir.mehranlatifi83.roozara.R;
+import ir.mehranlatifi83.roozara.service.SleepGuardService;
 import ir.mehranlatifi83.roozara.util.VendorSupport;
 
 public class PermissionsActivity extends AppCompatActivity {
@@ -64,6 +65,8 @@ public class PermissionsActivity extends AppCompatActivity {
                         safeStart(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
         bind(R.id.row_overlay, R.string.permission_overlay,
                 R.string.permission_overlay_desc, v -> openOverlay());
+        bind(R.id.row_guard, R.string.permission_guard,
+                R.string.permission_guard_desc, v -> showGuardExplanation());
         bind(R.id.row_fullscreen, R.string.permission_fullscreen,
                 R.string.permission_fullscreen_desc, v -> openFullScreen());
         bind(R.id.row_battery, R.string.permission_battery,
@@ -122,6 +125,7 @@ public class PermissionsActivity extends AppCompatActivity {
         boolean overlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
                 || Settings.canDrawOverlays(this);
         status(R.id.row_overlay, overlay, true);
+        status(R.id.row_guard, SleepGuardService.isEnabled(this), true);
 
         if (VendorSupport.hasBackgroundPopupSetting()) {
             // Neither MIUI setting can be queried from an app, so these rows never claim
@@ -199,9 +203,42 @@ public class PermissionsActivity extends AppCompatActivity {
                     .setMessage(R.string.vendor_popup_prompt_message)
                     .setPositiveButton(R.string.open_settings,
                             (d, w) -> safeStart(VendorSupport.backgroundPopupIntent(this)))
-                    .setNegativeButton(R.string.later, null)
+                    .setNegativeButton(R.string.later, (d, w) -> promptGuardIfNeeded())
+                    .setOnCancelListener(d -> promptGuardIfNeeded())
                     .show();
+            return;
         }
+        promptGuardIfNeeded();
+    }
+
+    /**
+     * Offered right after overlay access is granted, because that is the moment the
+     * remaining gap becomes relevant: the overlay covers other apps, but nothing can
+     * cover the status bar, so the notification shade is still a way out.
+     */
+    private void promptGuardIfNeeded() {
+        if (SleepGuardService.isEnabled(this)) return;
+        showGuardExplanation();
+    }
+
+    /**
+     * Explain the sleep guard before sending anyone to Accessibility settings.
+     *
+     * Accessibility is the most powerful permission Android hands to an ordinary app,
+     * and the system's own warning says only that the app will get "full control of
+     * your device" — which is alarming and explains nothing. Someone deciding whether
+     * to grant it deserves to know what problem it solves, exactly which taps turn it
+     * on, and precisely what the app does and does not look at. Scrollable because it
+     * is long, and long on purpose.
+     */
+    private void showGuardExplanation() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.guard_prompt_title)
+                .setMessage(R.string.guard_prompt_message)
+                .setPositiveButton(R.string.open_settings,
+                        (d, w) -> safeStart(SleepGuardService.settingsIntent()))
+                .setNegativeButton(R.string.later, null)
+                .show();
     }
 
     private void openVpn() {

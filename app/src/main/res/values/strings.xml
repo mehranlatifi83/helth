@@ -206,4 +206,31 @@
     <string name="log_empty">There is nothing in the activity log yet.</string>
     <string name="log_recording_on">Activity is being recorded.</string>
     <string name="log_recording_off">Activity recording is switched off.</string>
+
+    <!-- Sleep guard -->
+    <string name="guard_service_label">Roozara sleep guard</string>
+    <string name="guard_service_summary">Keeps the phone unusable during your sleep hours</string>
+    <string name="guard_service_description">Lets Roozara bring the sleep screen back if another app opens during your sleep hours, and close the notification panel while sleep mode is running.
+
+Roozara never reads what is on your screen and never changes how your screen reader works. It only checks which app came to the front, and only while sleep mode is active.</string>
+    <string name="permission_guard">Sleep guard</string>
+    <string name="permission_guard_desc">The only way to fully stop the phone being used during sleep</string>
+    <string name="guard_prompt_title">Turn on the sleep guard</string>
+    <string name="guard_prompt_message">Without this, the sleep screen can still be left. The notification panel can be pulled down from the top of the screen, and from there Settings can be opened and Roozara can be stopped. No app is allowed to cover the status bar, so this cannot be prevented any other way.
+
+With the sleep guard on, opening any other app brings the sleep screen straight back, and the notification panel closes as soon as it opens.
+
+HOW TO TURN IT ON
+1. Tap "Open settings" below. Accessibility settings will open.
+2. Find "Roozara sleep guard" in the list. It is usually under "Installed apps", "Downloaded apps" or "Installed services".
+3. Tap it, then turn the switch on.
+4. Android will warn you about full device control. Tap "Allow" or "OK".
+5. Press Back until you return to Roozara.
+
+WHAT ROOZARA DOES AND DOES NOT DO
+It only checks which app came to the front, and only while sleep mode is running. It never reads the content of your screen, never sees what you type, and sends nothing anywhere. It does not interfere with TalkBack or any other screen reader — they keep working exactly as before, and you keep full control of them.
+
+You can switch it off at any time from the same settings screen.</string>
+    <string name="guard_on">On</string>
+    <string name="guard_off">Off</string>
 </resources>
