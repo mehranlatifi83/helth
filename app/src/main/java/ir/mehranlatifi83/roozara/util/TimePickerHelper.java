@@ -93,13 +93,13 @@ public class TimePickerHelper {
                 .setTitle(title)
                 .setView(content)
                 .setPositiveButton(android.R.string.ok, (d, w) ->
-                        listener.onTimeSet(npHour.getValue(), npMin.getValue()))
+                        listener.onTimeSet(commit(npHour), commit(npMin)))
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
 
         toggleBtn.setOnClickListener(v -> {
             dialog.dismiss();
-            showClockMode(fm, ctx, title, npHour.getValue(), npMin.getValue(), listener);
+            showClockMode(fm, ctx, title, commit(npHour), commit(npMin), listener);
         });
 
         dialog.show();
@@ -152,6 +152,22 @@ public class TimePickerHelper {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Read a picker's value, committing anything still being typed first.
+     *
+     * NumberPicker only commits typed text on focus loss or the IME "done" action, and
+     * tapping a dialog button does not reliably take focus away from its edit field.
+     * The live-sync below normally keeps the value current, but it works through
+     * reflection on a private platform field, which newer Android builds may refuse —
+     * and on those devices a time the user typed and could see on screen would be read
+     * back as the old one and silently discarded. clearFocus() forces the commit
+     * whether or not the reflection succeeded.
+     */
+    private static int commit(NumberPicker picker) {
+        picker.clearFocus();
+        return picker.getValue();
+    }
 
     private static NumberPicker makeNumberPicker(Context ctx, int min, int max, int value) {
         NumberPicker np = new NumberPicker(ctx);

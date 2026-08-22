@@ -44,9 +44,12 @@ public class WaterReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
-        ActivityLog.log(ctx, "water reminder fired");
         if (!ACTION_WATER.equals(intent.getAction())) return;
-        if (!WaterReminderManager.isEnabled(ctx)) return;
+        if (!WaterReminderManager.isEnabled(ctx)) {
+            ActivityLog.log(ctx, "water reminder skipped", "reason=reminders_switched_off");
+            return;
+        }
+        ActivityLog.log(ctx, "water reminder fired");
 
         int slot = intent.getIntExtra(EXTRA_SLOT, 0);
         int h    = intent.getIntExtra(EXTRA_HOUR, 0);

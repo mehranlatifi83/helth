@@ -8,6 +8,7 @@ import android.media.AudioManager;
 
 import ir.mehranlatifi83.roozara.service.SleepVpnService;
 import ir.mehranlatifi83.roozara.ui.SleepLockActivity;
+import ir.mehranlatifi83.roozara.ui.SleepOverlayGuard;
 import ir.mehranlatifi83.roozara.util.ActivityLog;
 
 /**
@@ -115,6 +116,12 @@ public final class SleepModeController {
      */
     public static void releaseSystemState(Context ctx, String reason) {
         boolean wasActive = isSleepActive(ctx);
+
+        // Taken down here rather than only by the lock activity. The activity normally
+        // removes it on resume, but if it was never able to come back — a background
+        // activity start refused by the system, or the process being killed — the cover
+        // would otherwise stay over the screen with nothing left to remove it.
+        SleepOverlayGuard.hide(ctx);
 
         restoreRinger(ctx);
 

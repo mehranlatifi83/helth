@@ -19,6 +19,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import ir.mehranlatifi83.roozara.R;
+import ir.mehranlatifi83.roozara.manager.SleepModeController;
 import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.ui.MainActivity;
 import ir.mehranlatifi83.roozara.ui.SleepLockActivity;
@@ -92,27 +93,75 @@ public class WakeAlarmService extends Service {
 
     // ─── Alarm sound ─────────────────────────────────────────────────────────
 
+    /**
+     * Start the alarm, falling back through every sound available rather than going
+     * silent.
+     *
+     * A chosen sound can stop being playable at any time: the file is deleted, the SD
+     * card is gone, or the URI permission was lost when the app was updated. Previously
+     * setDataSource() simply threw, the exception was logged, and the alarm never made a
+     * sound — and because the half-built player was left in place, every retry returned
+     * early believing it was already playing. A wake alarm that is silent is the one
+     * failure this app cannot have.
+     */
     private void playAlarm() {
         // If already playing, skip — prevents a double-start from briefly stopping
         // and restarting audio when both CountDownTimer and AlarmManager fire together.
         if (player != null) return;
-        Uri uri = resolveAlarmUri();
+
+        String chosen = getSharedPreferences("helth_prefs", MODE_PRIVATE)
+                .getString(PREF_SOUND_URI, null);
+        if (chosen != null && tryPlay(Uri.parse(chosen), "chosen sound")) return;
+        if (chosen != null) {
+            ActivityLog.log(this, "chosen alarm sound could not be played - falling back");
+        }
+
+        Uri alarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        if (alarm != null && tryPlay(alarm, "default alarm")) return;
+
+        Uri ringtone = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        if (ringtone != null && tryPlay(ringtone, "default ringtone")) return;
+
+        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        if (notification != null && tryPlay(notification, "notification sound")) return;
+
+        ActivityLog.log(this, "WAKE ALARM IS SILENT", "reason=no_playable_sound_found");
+    }
+
+    /** Attempt one source. Leaves player null on failure so the next one can be tried. */
+    private boolean tryPlay(Uri uri, String description) {
+        MediaPlayer candidate = null;
         try {
-            player = new MediaPlayer();
-            player.setAudioAttributes(new AudioAttributes.Builder()
+            candidate = new MediaPlayer();
+            candidate.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build());
-            player.setDataSource(this, uri);
-            player.setLooping(true);
-            player.prepareAsync();
-            player.setOnPreparedListener(MediaPlayer::start);
-            player.setOnErrorListener((mp, what, extra) -> {
+            candidate.setDataSource(this, uri);
+            candidate.setLooping(true);
+            candidate.setOnPreparedListener(MediaPlayer::start);
+            candidate.setOnErrorListener((mp, what, extra) -> {
+                // Reported asynchronously, long after this method returned, so the
+                // fallback chain cannot help here. Recorded so a silent morning can at
+                // least be explained afterwards.
                 Log.e(TAG, "MediaPlayer error: " + what + "/" + extra);
-                return false;
+                ActivityLog.log(this, "alarm playback failed while running",
+                        "what=" + what + " extra=" + extra);
+                return true;
             });
+            candidate.prepareAsync();
+            player = candidate;
+            ActivityLog.log(this, "wake alarm playing", "source=" + description);
+            return true;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to start alarm player", e);
+            Log.e(TAG, "Could not play " + description, e);
+            if (candidate != null) {
+                try {
+                    candidate.release();
+                } catch (Exception ignored) {}
+            }
+            player = null;
+            return false;
         }
     }
 
@@ -129,31 +178,19 @@ public class WakeAlarmService extends Service {
         }
     }
 
-    private Uri resolveAlarmUri() {
-        String saved = getSharedPreferences("helth_prefs", MODE_PRIVATE)
-                .getString(PREF_SOUND_URI, null);
-        if (saved != null) return Uri.parse(saved);
-        Uri def = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        return def != null ? def : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-    }
-
     // ─── Sleep state cleanup ─────────────────────────────────────────────────
 
     /** Fully tears down sleep mode. Idempotent — safe to call even if already inactive. */
     private void doFullSleepCleanup() {
-        stopService(new Intent(this, SleepVpnService.class));
-        SleepVpnService.disconnect();
-
-        ((AudioManager) getSystemService(AUDIO_SERVICE))
-                .setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+        // Through the controller so the ringer goes back to whatever it was before
+        // bedtime. Forcing NORMAL here switched the ringer on for anyone who keeps
+        // their phone on vibrate.
+        SleepModeController.releaseSystemState(this, "wake_alarm_dismissed");
 
         getSharedPreferences("helth_prefs", MODE_PRIVATE)
                 .edit()
-                .putBoolean("sleep_active", false)
                 .putBoolean(KEY_WAKE_ALARM_ACTIVE, false)
                 .apply();
-
-        getSystemService(NotificationManager.class).cancel(2);
     }
 
     // ─── Notification ─────────────────────────────────────────────────────────
