@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the log directory is exposed, and only so the log can be shared. -->
+<paths>
+    <files-path name="logs" path="logs/" />
+</paths>

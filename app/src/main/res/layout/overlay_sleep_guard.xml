@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The cover shown over whatever the user switched to while sleep mode is running.
+
+  Deliberately plain: it exists to hide the app behind it and to say why, not to be a
+  second lock screen. Tapping anywhere returns to the real one.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorSleepBackground"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:focusable="true"
+    android:contentDescription="@string/overlay_guard_description">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/iranyekanx"
+        android:gravity="center"
+        android:text="@string/overlay_guard_title"
+        android:textColor="@color/colorSleepClock"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="@font/iranyekanx"
+        android:gravity="center"
+        android:text="@string/overlay_guard_hint"
+        android:textColor="@color/colorSleepText"
+        android:textSize="16sp" />
+</LinearLayout>

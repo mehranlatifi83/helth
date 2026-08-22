@@ -30,6 +30,8 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 
 import ir.mehranlatifi83.roozara.R;
 import ir.mehranlatifi83.roozara.manager.ScheduleManager;
+import ir.mehranlatifi83.roozara.manager.SleepModeController;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.manager.WaterReminderManager;
 import ir.mehranlatifi83.roozara.receiver.SleepScheduleReceiver;
 import ir.mehranlatifi83.roozara.service.WakeAlarmService;
@@ -227,6 +229,17 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         ScheduleManager.setScheduleEnabled(this, checked);
+        ActivityLog.log(this, "sleep schedule switched " + (checked ? "on" : "off"));
+
+        // Switching the schedule off has to undo a night that is already running, not
+        // just cancel tomorrow's alarms. Otherwise turning it off mid-day left the phone
+        // silent and the internet blocked with nothing left to put either back.
+        if (!checked && SleepModeController.isSleepActive(this)) {
+            SleepModeController.releaseSystemState(this, "schedule_switched_off");
+            WakeAlarmService.stop(this);
+            SleepOverlayGuard.hide(this);
+        }
+
         updateScheduleUI();
     }
 
@@ -236,9 +249,12 @@ public class MainActivity extends AppCompatActivity {
             // Repairs alarms after an app update or if an OEM cleared pending alarms.
             ScheduleManager.rescheduleIfEnabled(this);
         }
+        // The early-exit check is what stops the app restarting a night the user has
+        // already earned their way out of: leaving early clears "sleep active", and
+        // without this, simply opening the app put the lock screen straight back up.
         if (ScheduleManager.isInsideSleepWindow(this)
-                && !getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                        .getBoolean("sleep_active", false)) {
+                && !SleepModeController.isSleepActive(this)
+                && !SleepModeController.wasCycleLeftEarly(this)) {
             sendBroadcast(new Intent(this, SleepScheduleReceiver.class)
                     .setAction(SleepScheduleReceiver.ACTION_SLEEP));
         }
@@ -383,6 +399,7 @@ public class MainActivity extends AppCompatActivity {
         popup.getMenu().add(0, 5, 2, getString(R.string.menu_permissions));
         popup.getMenu().add(0, 3, 3, getString(R.string.menu_guide));
         popup.getMenu().add(0, 4, 4, getString(R.string.menu_privacy));
+        popup.getMenu().add(0, 6, 5, getString(R.string.menu_activity_log));
         popup.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case 1: showLanguagePicker(); return true;
@@ -390,10 +407,61 @@ public class MainActivity extends AppCompatActivity {
                 case 5: startActivity(new Intent(this, PermissionsActivity.class)); return true;
                 case 3: showGuide();          return true;
                 case 4: showPrivacyPolicy();  return true;
+                case 6: showActivityLogMenu(); return true;
             }
             return false;
         });
         popup.show();
+    }
+
+    // ─── Activity log ────────────────────────────────────────────────────────
+
+    /**
+     * The log controls, gathered in one dialog.
+     *
+     * The recording state is spelled out in the first item's own label rather than
+     * shown as a checkmark, so it is announced when the list is read out.
+     */
+    private void showActivityLogMenu() {
+        boolean enabled = ActivityLog.isEnabled(this);
+        String[] options = {
+                getString(enabled ? R.string.log_stop_recording : R.string.log_start_recording),
+                getString(R.string.log_share),
+                getString(R.string.log_clear),
+        };
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.menu_activity_log)
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: toggleActivityLog(!enabled); break;
+                        case 1: shareActivityLog();          break;
+                        default: clearActivityLog();         break;
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void toggleActivityLog(boolean enabled) {
+        ActivityLog.setEnabled(this, enabled);
+        toast(getString(enabled ? R.string.log_recording_on : R.string.log_recording_off));
+    }
+
+    private void shareActivityLog() {
+        Intent share = ActivityLog.shareIntent(this);
+        if (share == null) {
+            toast(getString(R.string.log_empty));
+            return;
+        }
+        startActivity(Intent.createChooser(share, getString(R.string.log_share)));
+    }
+
+    private void clearActivityLog() {
+        toast(getString(ActivityLog.clear(this) ? R.string.log_cleared : R.string.log_clear_failed));
+    }
+
+    private void toast(String message) {
+        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show();
     }
 
     private void showLanguagePicker() {

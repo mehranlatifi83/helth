@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat;
 import java.util.Calendar;
 
 import ir.mehranlatifi83.roozara.R;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.manager.WaterReminderManager;
 import ir.mehranlatifi83.roozara.ui.WaterActivity;
 import ir.mehranlatifi83.roozara.ui.WaterOverlayActivity;
@@ -43,6 +44,7 @@ public class WaterReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
+        ActivityLog.log(ctx, "water reminder fired");
         if (!ACTION_WATER.equals(intent.getAction())) return;
         if (!WaterReminderManager.isEnabled(ctx)) return;
 

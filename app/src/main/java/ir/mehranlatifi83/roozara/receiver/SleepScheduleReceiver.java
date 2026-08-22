@@ -6,7 +6,6 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.media.AudioManager;
 import android.os.Build;
 import android.provider.Settings;
 
@@ -14,7 +13,8 @@ import androidx.core.app.NotificationCompat;
 
 import ir.mehranlatifi83.roozara.R;
 import ir.mehranlatifi83.roozara.manager.ScheduleManager;
-import ir.mehranlatifi83.roozara.service.SleepVpnService;
+import ir.mehranlatifi83.roozara.manager.SleepModeController;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.service.WakeAlarmService;
 import ir.mehranlatifi83.roozara.ui.MainActivity;
 import ir.mehranlatifi83.roozara.ui.SleepLockActivity;
@@ -44,13 +44,12 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
     }
 
     private void activateSleepMode(Context ctx) {
-        setRingerModeSafely(ctx, AudioManager.RINGER_MODE_SILENT);
+        ActivityLog.log(ctx, "bedtime reached - sleep mode starting");
 
-        // Only start VPN if the user has already pre-authorized it (prepare returns null
-        // when authorized). Without authorization, the tunnel silently fails to establish.
-        if (android.net.VpnService.prepare(ctx) == null) {
-            ctx.startForegroundService(new Intent(ctx, SleepVpnService.class));
-        } else {
+        // Silencing and the internet block both live in the controller, so every path
+        // that ends the night undoes exactly what this put in place.
+        SleepModeController.applySystemState(ctx);
+        if (android.net.VpnService.prepare(ctx) != null) {
             showVpnPermissionMissingNotification(ctx);
         }
 
@@ -77,29 +76,17 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
     }
 
     private void deactivateSleepMode(Context ctx) {
-        boolean wasActive = ctx.getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
-                .getBoolean("sleep_active", false);
+        boolean wasActive = SleepModeController.isSleepActive(ctx);
+        ActivityLog.log(ctx, "wake time reached", "sleep_was_active=" + ActivityLog.yesNo(wasActive));
 
-        setRingerModeSafely(ctx, AudioManager.RINGER_MODE_NORMAL);
-
-        ctx.stopService(new Intent(ctx, SleepVpnService.class));
-
-        ctx.getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
-                .edit().putBoolean("sleep_active", false).apply();
+        SleepModeController.releaseSystemState(ctx, "wake_time");
+        // The alarm has to be audible even if the phone was on silent before bedtime.
+        SleepModeController.unsilenceForAlarm(ctx);
 
         // Only ring the wake alarm if sleep was still active AND the lock screen is not
         // already the visible foreground activity (which handles the challenge inline).
         if (wasActive && !SleepLockActivity.isActivityInForeground()) {
             WakeAlarmService.start(ctx);
-        }
-    }
-
-    private void setRingerModeSafely(Context ctx, int mode) {
-        try {
-            ((AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE)).setRingerMode(mode);
-        } catch (SecurityException ignored) {
-            // DND access may have been revoked after the schedule was enabled. The
-            // remaining bedtime actions must still run instead of aborting the receiver.
         }
     }
 

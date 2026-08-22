@@ -110,6 +110,18 @@
             </intent-filter>
         </receiver>
 
+
+        <!-- Exposes only the log directory, so the activity log can be shared with
+             whoever is helping diagnose a problem. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

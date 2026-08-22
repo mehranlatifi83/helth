@@ -12,6 +12,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import ir.mehranlatifi83.roozara.R;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.ui.MainActivity;
 
 import java.io.FileInputStream;
@@ -45,10 +46,12 @@ public class SleepVpnService extends VpnService {
             // A Toast is unreliable here: this runs from a background-started service,
             // and a user who is asleep or blind would not see it anyway. A notification
             // persists until it is read.
+            ActivityLog.log(this, "internet block failed", "reason=tunnel_not_established");
             notifyBlockingFailed();
             stopSelf();
             return START_NOT_STICKY;
         }
+        ActivityLog.log(this, "internet blocked", "tunnel=up");
         startDraining();
         return START_STICKY;
     }

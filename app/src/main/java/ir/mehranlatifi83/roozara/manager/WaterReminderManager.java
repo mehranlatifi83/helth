@@ -11,6 +11,7 @@ import ir.mehranlatifi83.roozara.receiver.WaterReminderReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 
 /**
  * Schedules 8 water reminders in the medically optimal windows of the user's day.
@@ -141,6 +142,7 @@ public class WaterReminderManager {
     // ─── Alarm scheduling ─────────────────────────────────────────────────────
 
     public static void scheduleAll(Context ctx) {
+        ActivityLog.log(ctx, "water reminders rescheduled");
         if (!canScheduleExact(ctx)) return;
         cancelAll(ctx);
         List<int[]> slots = computeReminderTimes(ctx);

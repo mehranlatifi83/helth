@@ -19,6 +19,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import ir.mehranlatifi83.roozara.R;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.ui.MainActivity;
 import ir.mehranlatifi83.roozara.ui.SleepLockActivity;
 
@@ -75,10 +76,12 @@ public class WakeAlarmService extends Service {
     // ─── Static helpers ───────────────────────────────────────────────────────
 
     public static void start(Context ctx) {
+        ActivityLog.log(ctx, "wake alarm starting");
         ctx.startForegroundService(new Intent(ctx, WakeAlarmService.class));
     }
 
     public static void stop(Context ctx) {
+        ActivityLog.log(ctx, "wake alarm stopped");
         try {
             ctx.startForegroundService(
                     new Intent(ctx, WakeAlarmService.class).setAction(ACTION_DISMISS));

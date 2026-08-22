@@ -9,11 +9,13 @@ import android.media.AudioManager;
 import ir.mehranlatifi83.roozara.manager.ScheduleManager;
 import ir.mehranlatifi83.roozara.manager.WaterReminderManager;
 import ir.mehranlatifi83.roozara.service.SleepVpnService;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 
 public class BootReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
+        ActivityLog.log(ctx, "device restarted - restoring the schedule");
         String action = intent.getAction();
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
                 && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)

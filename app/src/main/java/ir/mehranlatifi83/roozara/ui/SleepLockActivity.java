@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -37,10 +36,11 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import ir.mehranlatifi83.roozara.R;
 import ir.mehranlatifi83.roozara.manager.ScheduleManager;
+import ir.mehranlatifi83.roozara.manager.SleepModeController;
+import ir.mehranlatifi83.roozara.util.ActivityLog;
 import ir.mehranlatifi83.roozara.service.SleepVpnService;
 import ir.mehranlatifi83.roozara.service.WakeAlarmService;
 import ir.mehranlatifi83.roozara.util.JalaliCalendar;
-import ir.mehranlatifi83.roozara.util.ScreenPinning;
 
 import java.util.Calendar;
 import java.util.Locale;
@@ -87,7 +87,6 @@ public class SleepLockActivity extends AppCompatActivity {
     private String  memorySequence;
     private int     wrongCount          = 0;
     private boolean exitCalled          = false;
-    private boolean pinningApplied      = false;
     private boolean wakeChallengeActive = false;
     private boolean earlyExitButtonShown = false;
 
@@ -179,10 +178,9 @@ public class SleepLockActivity extends AppCompatActivity {
         handler.removeCallbacks(relaunchIfNeeded);
         handler.post(clockTick);
         hideSystemBars();
-        // Re-applied on every resume: the system drops lock task mode whenever the
-        // activity leaves the foreground, so pinning once in onCreate would not survive
-        // the screen being turned off and on again.
-        applyScreenPinning();
+        // The overlay guard exists to cover the screen while this activity is away.
+        // Now that we are back, take it down.
+        SleepOverlayGuard.hide(this);
         // Self-heal the internet block. If the tunnel was torn down by a process kill or
         // by another VPN app taking the slot, it comes back rather than leaving the user
         // quietly online until morning.
@@ -199,6 +197,19 @@ public class SleepLockActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Called just before the user leaves via Home or Recents.
+     *
+     * The relaunch below is debounced, which is right for a transient pause but leaves
+     * the launcher visible for those few hundred milliseconds. Raising the overlay here
+     * closes that gap: it is up before the home screen is ever drawn.
+     */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (!exitCalled) SleepOverlayGuard.show(this);
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -212,6 +223,10 @@ public class SleepLockActivity extends AppCompatActivity {
         // Small debounce so a transient pause (e.g. a system dialog briefly stealing
         // focus) doesn't immediately relaunch; the actual decision is based on the
         // screen's power state at the time this runs, not on elapsed time.
+        // Cover whatever is behind us until this activity is back. Only does anything
+        // when overlay access is granted; without it the app has no way to draw over
+        // another app and falls back to the relaunch below on its own.
+        if (!exitCalled && isScreenOn()) SleepOverlayGuard.show(this);
         handler.postDelayed(relaunchIfNeeded, 300);
     }
 
@@ -262,33 +277,9 @@ public class SleepLockActivity extends AppCompatActivity {
                 WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         // BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE let a swipe bring the navigation buttons
         // and the notification shade straight back, which is how people were leaving the
-        // lock screen. The default behaviour keeps them hidden; lock task mode below is
-        // what actually stops the shade from being pulled down at all.
+        // lock screen. The default behaviour keeps them hidden.
         ctrl.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_DEFAULT);
         ctrl.hide(WindowInsetsCompat.Type.systemBars());
-    }
-
-    /**
-     * Pin the screen for the duration of the sleep window.
-     *
-     * Only attempted when overlay access is granted: that is the mode where the lock
-     * screen is meant to own the display. Without it the app is running in the
-     * notification-fallback mode, where pinning would be both surprising and unhelpful.
-     */
-    private void applyScreenPinning() {
-        if (exitCalled || pinningApplied) return;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M
-                || !Settings.canDrawOverlays(this)) {
-            return;
-        }
-        pinningApplied = ScreenPinning.start(this);
-    }
-
-    private void releaseScreenPinning() {
-        // Must happen before finishing, otherwise the task stays pinned and the user is
-        // stuck on whatever the launcher shows next.
-        ScreenPinning.stop(this);
-        pinningApplied = false;
     }
 
     private void blockBackButton() {
@@ -711,7 +702,9 @@ public class SleepLockActivity extends AppCompatActivity {
 
     private void exitSleepMode() {
         exitCalled = true;
-        releaseScreenPinning();
+        ActivityLog.log(this, "leaving sleep mode",
+                "via=" + (wakeChallengeActive ? "wake_challenge" : "early_exit"));
+        SleepOverlayGuard.hide(this);
         // Only stop WakeAlarmService if the alarm is actually active (wake time reached).
         // Calling stop() before wake time starts the service just to dismiss it, causing
         // a brief notification flash.
@@ -720,17 +713,19 @@ public class SleepLockActivity extends AppCompatActivity {
             WakeAlarmService.stop(this);
         }
 
-        stopService(new Intent(this, SleepVpnService.class));
-        SleepVpnService.disconnect();
-
-        ((AudioManager) getSystemService(Context.AUDIO_SERVICE))
-                .setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+        // Stops the tunnel, puts the ringer back exactly as it was before bedtime
+        // rather than forcing it to normal, and clears the sleep flags.
+        SleepModeController.releaseSystemState(this, wakeChallengeActive ? "wake_challenge_passed"
+                                                                        : "early_exit");
+        if (!wakeChallengeActive) {
+            // Only an early exit ends the night ahead of time; passing the wake
+            // challenge happens at the wake time itself and needs no marker.
+            SleepModeController.markCycleLeftEarly(this);
+        }
 
         getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
-                .putBoolean("sleep_active", false)
                 .putBoolean(WakeAlarmService.KEY_WAKE_ALARM_ACTIVE, false)
-                .remove(KEY_SLEEP_START)
                 .apply();
 
         getSystemService(NotificationManager.class).cancel(2);

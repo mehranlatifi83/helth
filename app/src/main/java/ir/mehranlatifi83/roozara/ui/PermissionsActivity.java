@@ -23,7 +23,6 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import ir.mehranlatifi83.roozara.R;
-import ir.mehranlatifi83.roozara.util.ScreenPinning;
 import ir.mehranlatifi83.roozara.util.VendorSupport;
 
 public class PermissionsActivity extends AppCompatActivity {
@@ -65,8 +64,6 @@ public class PermissionsActivity extends AppCompatActivity {
                         safeStart(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
         bind(R.id.row_overlay, R.string.permission_overlay,
                 R.string.permission_overlay_desc, v -> openOverlay());
-        bind(R.id.row_pinning, R.string.permission_pinning,
-                R.string.permission_pinning_desc, v -> safeStart(ScreenPinning.settingsIntent()));
         bind(R.id.row_fullscreen, R.string.permission_fullscreen,
                 R.string.permission_fullscreen_desc, v -> openFullScreen());
         bind(R.id.row_battery, R.string.permission_battery,
@@ -125,10 +122,6 @@ public class PermissionsActivity extends AppCompatActivity {
         boolean overlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
                 || Settings.canDrawOverlays(this);
         status(R.id.row_overlay, overlay, true);
-
-        // Screen pinning only matters in overlay mode, which is where the lock screen
-        // owns the display and the shade must stay shut.
-        status(R.id.row_pinning, ScreenPinning.isEnabledInSettings(this), true);
 
         if (VendorSupport.hasBackgroundPopupSetting()) {
             // Neither MIUI setting can be queried from an app, so these rows never claim
@@ -206,23 +199,9 @@ public class PermissionsActivity extends AppCompatActivity {
                     .setMessage(R.string.vendor_popup_prompt_message)
                     .setPositiveButton(R.string.open_settings,
                             (d, w) -> safeStart(VendorSupport.backgroundPopupIntent(this)))
-                    .setNegativeButton(R.string.later, (d, w) -> promptScreenPinning())
-                    .setOnCancelListener(d -> promptScreenPinning())
+                    .setNegativeButton(R.string.later, null)
                     .show();
-            return;
         }
-        promptScreenPinning();
-    }
-
-    private void promptScreenPinning() {
-        if (ScreenPinning.isEnabledInSettings(this)) return;
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.pinning_prompt_title)
-                .setMessage(R.string.pinning_prompt_message)
-                .setPositiveButton(R.string.open_settings,
-                        (d, w) -> safeStart(ScreenPinning.settingsIntent()))
-                .setNegativeButton(R.string.later, null)
-                .show();
     }
 
     private void openVpn() {
