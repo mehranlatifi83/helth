@@ -35,6 +35,11 @@ public class SleepVpnService extends VpnService {
     private volatile boolean draining;
     private Thread drainThread;
 
+    // Which address families the tunnel actually captured, so the log can say whether
+    // traffic could still be leaving over the other one.
+    private boolean hasIpv4;
+    private boolean hasIpv6;
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         createNotificationChannel();
@@ -62,13 +67,25 @@ public class SleepVpnService extends VpnService {
      * is rebuilt instead of silently leaving the user online for the rest of the night.
      */
     public static void ensureRunning(android.content.Context ctx) {
-        if (VpnService.prepare(ctx) != null) return;  // No consent; nothing we can do.
+        if (VpnService.prepare(ctx) != null) {
+            ActivityLog.log(ctx, "internet block cannot restart", "reason=vpn_consent_missing");
+            return;
+        }
         if (vpnInterface != null) return;
+        ActivityLog.log(ctx, "internet block was down - restarting the tunnel");
         try {
             ctx.startForegroundService(new Intent(ctx, SleepVpnService.class));
         } catch (Exception e) {
             Log.w(TAG, "Could not restart the blocking tunnel", e);
+            ActivityLog.log(ctx, "internet block restart failed", "error=" + describe(e));
         }
+    }
+
+    /** Exception summary short enough for one log line but specific enough to act on. */
+    private static String describe(Throwable e) {
+        String message = e.getMessage();
+        String name = e.getClass().getSimpleName();
+        return message == null || message.isEmpty() ? name : name + ": " + message;
     }
 
     private void notifyBlockingFailed() {
@@ -97,6 +114,11 @@ public class SleepVpnService extends VpnService {
     @Override
     public void onRevoke() {
         Log.w(TAG, "VPN permission revoked by the system or another app");
+        // The single most common reason the internet is not actually blocked: another
+        // VPN app took the slot, or the user revoked consent. Android allows exactly one
+        // active VPN, so ours is simply gone and the phone is fully online again.
+        ActivityLog.log(this, "internet block LOST",
+                "reason=vpn_revoked_by_system_or_another_vpn_app");
         stopDraining();
         disconnect();
         stopSelf();
@@ -127,12 +149,16 @@ public class SleepVpnService extends VpnService {
         // while the app reported success. Each family is now best-effort, and the tunnel
         // is established as long as at least one of them applied.
         boolean anyFamily = false;
+        hasIpv4 = false;
+        hasIpv6 = false;
 
         try {
             builder.addAddress("10.0.0.2", 32).addRoute("0.0.0.0", 0);
             anyFamily = true;
+            hasIpv4 = true;
         } catch (Exception e) {
             Log.w(TAG, "IPv4 route unavailable", e);
+            ActivityLog.log(this, "IPv4 could not be routed", "error=" + describe(e));
         }
 
         try {
@@ -140,12 +166,18 @@ public class SleepVpnService extends VpnService {
             // traffic can bypass an IPv4-only blocking tunnel.
             builder.addAddress("fd00::2", 128).addRoute("::", 0);
             anyFamily = true;
+            hasIpv6 = true;
         } catch (Exception e) {
-            Log.w(TAG, "IPv6 route unavailable", e);
+            Log.w(TAG, "IPv6 could not be routed", e);
+            // Worth recording on its own: most mobile networks prefer IPv6, so an
+            // IPv4-only tunnel can leave the phone effectively online.
+            ActivityLog.log(this, "IPv6 could not be routed", "error=" + describe(e));
         }
 
         if (!anyFamily) {
             Log.e(TAG, "Neither IPv4 nor IPv6 could be routed; cannot block traffic");
+            ActivityLog.log(this, "internet block failed",
+                    "reason=no_ip_family_could_be_routed");
             return false;
         }
 
@@ -155,20 +187,28 @@ public class SleepVpnService extends VpnService {
             builder.addDisallowedApplication(getPackageName());
         } catch (Exception e) {
             Log.w(TAG, "Could not exclude own package from the tunnel", e);
+            ActivityLog.log(this, "could not exclude Roozara from the tunnel",
+                    "error=" + describe(e));
         }
 
         try {
             vpnInterface = builder.establish();
         } catch (Exception e) {
             Log.e(TAG, "Failed to establish VPN tunnel", e);
+            ActivityLog.log(this, "internet block failed",
+                    "reason=establish_threw error=" + describe(e));
             return false;
         }
 
         if (vpnInterface == null) {
             // establish() returns null when consent was never granted or was withdrawn.
             Log.e(TAG, "establish() returned null — VPN consent is missing");
+            ActivityLog.log(this, "internet block failed",
+                    "reason=establish_returned_null_vpn_consent_missing");
             return false;
         }
+        ActivityLog.log(this, "tunnel established",
+                "ipv4=" + ActivityLog.yesNo(hasIpv4) + " ipv6=" + ActivityLog.yesNo(hasIpv6));
         return true;
     }
 
@@ -196,7 +236,11 @@ public class SleepVpnService extends VpnService {
                 }
             } catch (IOException e) {
                 // Expected when the tunnel is torn down at wake time.
-                if (draining) Log.w(TAG, "Tunnel read ended", e);
+                if (draining) {
+                    Log.w(TAG, "Tunnel read ended", e);
+                    ActivityLog.log(this, "tunnel stopped draining unexpectedly",
+                            "error=" + describe(e));
+                }
             }
         }, "SleepVpnDrain");
         drainThread.setDaemon(true);
